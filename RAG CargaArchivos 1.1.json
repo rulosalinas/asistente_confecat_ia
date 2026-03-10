@@ -1,0 +1,388 @@
+{
+  "name": "RAG CargaArchivos 1.1",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        -32
+      ],
+      "id": "0ef2bacb-fcb1-46ad-aa1d-2ff5defa35f2",
+      "name": "Download a file",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "id",
+          "value": "PrductosConfe"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        -48
+      ],
+      "id": "c4b7c714-1041-470d-9f66-aa860b948e25",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "20ArF7IiaXCGMam4",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "watchFolder": true,
+        "folderId": {
+          "__rl": true,
+          "value": "01WOLYMV2N5DGF4ZMI45E2WK3KJYOOFB44",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOneDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        -32
+      ],
+      "id": "b3c914e0-6e98-4b94-a0cd-a3d3a9cc206b",
+      "name": "Microsoft OneDrive Trigger",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bf34db69-6af0-465f-a9a2-c195cf4496cd",
+              "name": "name",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1376,
+        -192
+      ],
+      "id": "ee51dc94-e191-4e4f-bd30-59d19a20d8c2",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1088,
+        -32
+      ],
+      "id": "a3025585-ecde-412a-867f-bcc853c18b1f",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -80,
+        192
+      ],
+      "id": "d6fe0732-f656-4c7b-9ef6-e366f339f228",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.output[0].content[0].text.documento_embedding }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "categoria",
+                "value": "={{ $json.output[0].content[0].text.metadata.categoria }}"
+              },
+              {
+                "name": "subcategoria",
+                "value": "={{ $json.output[0].content[0].text.metadata.subcategoria }}"
+              },
+              {
+                "name": "marca",
+                "value": "={{ $json.output[0].content[0].text.metadata.marca }}"
+              },
+              {
+                "name": "codigo",
+                "value": "={{ $json.output[0].content[0].text.metadata.codigo }}"
+              },
+              {
+                "name": "modelo",
+                "value": "={{ $json.output[0].content[0].text.metadata.modelo }}"
+              },
+              {
+                "name": "uso",
+                "value": "={{ $json.output[0].content[0].text.metadata.uso }}"
+              },
+              {
+                "name": "=material_principal",
+                "value": "={{ $json.output[0].content[0].text.metadata.material_principal }}"
+              },
+              {
+                "name": "talles",
+                "value": "={{ $json.output[0].content[0].text.metadata.talles }}"
+              },
+              {
+                "name": "normas",
+                "value": "={{ $json.output[0].content[0].text.metadata.normas }}"
+              },
+              {
+                "name": "puntera",
+                "value": "={{ $json.output[0].content[0].text.metadata.puntera }}"
+              },
+              {
+                "name": "archivo",
+                "value": "={{ $json.output[0].content[0].text.metadata.archivo}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        144,
+        176
+      ],
+      "id": "8418c61a-2f9c-45cb-84e1-cfb140b94bec",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Sos un asistente especializado en estructurar fichas técnicas y comerciales de productos de Indumentaria de trabajo y calzados de seguridad.\nNo inventes información. Usá solo los datos provistos. "
+            },
+            {
+              "content": "=Texto de la ficha comercial:\n\n{{ $json.text }}\n\nA partir de este texto:\n1) Generá un texto optimizado para búsqueda semántica.\n2) Generá metadata técnica y comercial.\n3) En el valor \"archivo\" de la metadata agrega el nombre del archivo: {{ $('Download a file').item.json.name }}\n\nRespondé EXCLUSIVAMENTE en este formato JSON:\n\n{\n  \"documento_embedding\": \"texto optimizado\",\n  \"metadata\": {\n    \"categoria\": \"\",\n    \"subcategoria\":\"\",\n    \"marca\": \"\",\n    \"modelo\": \"\",\n    \"codigo\": \"\",\n    \"uso\": \"\",\n    \"material_principal\": \"\",\n    \"talles\": \"\",\n    \"normas\": \"\",\n    \"puntera\": \"\",\n    \"archivo\": \"\"\n  }\n}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 2000,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          },
+          "temperature": 0,
+          "topP": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -912,
+        -32
+      ],
+      "id": "60bda24a-a092-470d-a249-5c14f554dada",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "bb788a11-eed0-49f1-9469-8b25d3ef81ef",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        192
+      ],
+      "id": "e0bc47e1-1efa-4801-8a02-faf32ef14237"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Download a file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        []
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "967b5aac-e460-40b1-9671-4da634ae5dc8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "KE5XOkN5fWdhrIF0",
+  "tags": []
+}
