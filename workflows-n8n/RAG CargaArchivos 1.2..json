@@ -1,0 +1,429 @@
+{
+  "name": "RAG CargaArchivos 1.2.1",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        -32
+      ],
+      "id": "11a62459-cc86-4ea1-b892-cf587e61944a",
+      "name": "Download a file",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "ProductosConfe",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -32
+      ],
+      "id": "6ab3e6dc-c468-4098-b858-82e8ce0dbcb8",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "20ArF7IiaXCGMam4",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1088,
+        -32
+      ],
+      "id": "52446de2-2932-455a-a0ed-3455bf2f4475",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -288,
+        176
+      ],
+      "id": "f6a5dbb8-e01b-4da3-91cc-f374a089cc13",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Sos un asistente especializado en estructurar fichas técnicas y comerciales de productos de Indumentaria de trabajo y calzados de seguridad.\nNo inventes información. Usá solo los datos provistos. "
+            },
+            {
+              "content": "=Texto de la ficha comercial:\n\n{{ $json.text }}\n\nA partir de este texto:\n1) Generá un texto optimizado para búsqueda semántica.\n2) Generá metadata técnica y comercial.\n3) En el valor \"archivo\" de la metadata agrega el nombre del archivo: {{ $('Download a file').item.json.name }}\n\nRespondé EXCLUSIVAMENTE en este formato JSON:\n\n{\n  \"documento_embedding\": \"texto optimizado\",\n  \"metadata\": {\n    \"categoria\": \"\",\n    \"subcategoria\":\"\",\n    \"marca\": \"\",\n    \"modelo\": \"\",\n    \"codigo\": \"\",\n    \"uso\": \"\",\n    \"material_principal\": \"\",\n    \"talles\": \"\",\n    \"normas\": \"\",\n    \"puntera\": \"\",\n    \"archivo\": \"\"\n  }\n}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 2000,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          },
+          "temperature": 0,
+          "topP": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -912,
+        -32
+      ],
+      "id": "4f730b2a-f267-4d2f-bbc8-0c754c651c38",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $('SetCampos').item.json.documento_embedding }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "categoria",
+                "value": "={{ $('SetCampos').item.json.metadata.categoria }}"
+              },
+              {
+                "name": "subcategoria",
+                "value": "={{ $('SetCampos').item.json.metadata.subcategoria }}"
+              },
+              {
+                "name": "marca",
+                "value": "={{ $('SetCampos').item.json.metadata.marca }}"
+              },
+              {
+                "name": "codigo",
+                "value": "={{ $('SetCampos').item.json.metadata.codigo }}"
+              },
+              {
+                "name": "modelo",
+                "value": "={{ $('SetCampos').item.json.metadata.modelo }}"
+              },
+              {
+                "name": "uso",
+                "value": "={{ $('SetCampos').item.json.metadata.uso }}"
+              },
+              {
+                "name": "=material_principal",
+                "value": "={{ $('SetCampos').item.json.metadata.material_principal }}"
+              },
+              {
+                "name": "talles",
+                "value": "={{ $('SetCampos').item.json.metadata.talles }}"
+              },
+              {
+                "name": "normas",
+                "value": "={{ $('SetCampos').item.json.metadata.normas }}"
+              },
+              {
+                "name": "puntera",
+                "value": "={{ $('SetCampos').item.json.metadata.puntera }}"
+              },
+              {
+                "name": "archivo",
+                "value": "={{ $('SetCampos').item.json.metadata.archivo }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -112,
+        176
+      ],
+      "id": "f8efeb05-f91e-4b77-831e-b6bfac404455",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {}
+          ]
+        },
+        "watchFolder": true,
+        "folderId": {
+          "__rl": true,
+          "value": "01WOLYMV2N5DGF4ZMI45E2WK3KJYOOFB44",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOneDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        -112
+      ],
+      "id": "59a95231-7ad1-4d60-bfdd-857c8324ccd5",
+      "name": "Created",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "https://954e628b-5cbd-4c88-905f-fbd8f221284f.us-east4-0.gcp.cloud.qdrant.io/collections/ProductosConfe",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.PFCzFHTYLrl7kt7Mmv8bWl5OklbJlmnBfnF3jZTNWjE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=\n{\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.archivo\",\n        \"match\": {\n          \"value\": \"{{ $json.metadata.archivo }}\"\n        }\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -464,
+        -32
+      ],
+      "id": "985fa49e-2fb4-4f2b-a6e4-df208adbf82c",
+      "name": "EvitarDuplicado"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bdff7d21-0db3-4717-8b38-f7615beb3c5e",
+              "name": "archivo",
+              "value": "={{$json.output[0].content[0].text.metadata.archivo}}",
+              "type": "string"
+            },
+            {
+              "id": "9415e1be-13fc-48b5-8b68-b33b28e1db63",
+              "name": "documento_embedding",
+              "value": "={{$json.output[0].content[0].text.documento_embedding}}",
+              "type": "string"
+            },
+            {
+              "id": "a89f0286-78d0-4943-87d9-651d38c61b36",
+              "name": "metadata",
+              "value": "={{$json.output[0].content[0].text.metadata}}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -624,
+        -32
+      ],
+      "id": "ba4e0ffc-dd93-4ac9-9845-129cf3681dc0",
+      "name": "SetCampos"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {}
+          ]
+        },
+        "event": "fileUpdated"
+      },
+      "type": "n8n-nodes-base.microsoftOneDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        64
+      ],
+      "id": "494b6f1b-17bd-48af-be3e-2c509aa50945",
+      "name": "Update",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Download a file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "SetCampos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        []
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Created": {
+      "main": [
+        [
+          {
+            "node": "Download a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvitarDuplicado": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetCampos": {
+      "main": [
+        [
+          {
+            "node": "EvitarDuplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update": {
+      "main": [
+        [
+          {
+            "node": "Download a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "979f8ff5-5bd3-4dae-b36b-bf477f45d5bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "iIOJ69CrxTgDPfIU",
+  "tags": []
+}
