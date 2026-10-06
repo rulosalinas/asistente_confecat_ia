@@ -1,0 +1,358 @@
+<!-- Estilos n8n -->
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet">
+
+
+<style>
+
+/* ========= COLORES ========= */
+
+:root{
+    --confecat-blue:#1E88E5;
+    --confecat-blue-dark:#1565C0;
+}
+
+/* ========= ENCABEZADO ========= */
+
+.chat-header{
+    background:#1E88E5 !important;
+    color:white !important;
+}
+
+.chat-header h1{
+    color:white !important;
+}
+
+.chat-header p{
+    color:white !important;
+}
+
+/* ========= MENSAJES DEL USUARIO ========= */
+
+.chat-message-from-user{
+    background:#1E88E5 !important;
+    color:white !important;
+    border-radius:12px !important;
+}
+
+.chat-message-from-user p{
+    color:white !important;
+}
+
+/* ========= MENSAJES DEL BOT ========= */
+
+.chat-message-from-bot{
+    background:white !important;
+    border-radius:12px !important;
+}
+
+.chat-message-from-bot p{
+    color:#222 !important;
+}
+
+/* ========= FONDO CHAT ========= */
+
+.chat-body{
+    background:#F5F7FA !important;
+}
+
+/* ========= CAJA DE TEXTO ========= */
+
+.chat-input textarea{
+    background:#ffffff !important;
+    color:#222222 !important;
+    border:1px solid #B0BEC5 !important;
+}
+
+.chat-input textarea::placeholder{
+    color:#666666 !important;
+}
+
+/* ========= BOTON ENVIAR ========= */
+
+.chat-input-send-button{
+    color:#1E88E5 !important;
+}
+
+.chat-input-send-button svg{
+    color:#1E88E5 !important;
+}
+
+.chat-input-send-button:hover{
+    color:#1565C0 !important;
+}
+
+/* ========= BOTON FLOTANTE ========= */
+
+.chat-window-toggle{
+    background:#1E88E5 !important;
+    color:white !important;
+}
+
+/* ========= TIPOGRAFIA ========= */
+
+.chat-window{
+    font-family:'Segoe UI',sans-serif !important;
+}
+
+</style>
+
+
+<div id="n8n-chat"></div>
+
+<script type="module">
+import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+createChat({
+	
+    webhookUrl: 'http://192.168.5.231:5678/webhook/a4d9a414-c929-486c-b394-4eac06aa004e/chat' ,
+
+    webhookConfig: {
+        method: 'POST',
+        headers: {}
+    },
+
+    target: '#n8n-chat',
+
+    mode: 'window',
+
+    chatInputKey: 'chatInput',
+    chatSessionKey: 'sessionId',
+
+    loadPreviousSession: false,
+
+    metadata: {},
+
+    showWelcomeScreen: false,
+
+    defaultLanguage: 'es',
+
+    initialMessages: [
+        '¡Bienvenido a Confecat!',
+        'Soy AVI. ¿En qué puedo ayudarte hoy?'
+    ],
+
+    i18n: {
+        es: {
+            title: 'AVI CONFECAT',
+            subtitle: 'Asistente Virtual Inteligente',
+            footer: '',
+            getStarted: 'Nueva conversación',
+            inputPlaceholder: 'Escriba su consulta...'
+        }
+    },
+
+    enableStreaming: false
+
+});
+</script>
+
+<style>
+
+/* ==========================
+   ENCABEZADO MÁS COMPACTO
+   ========================== */
+
+.chat-header{
+    padding: 10px 16px !important;
+}
+
+.chat-header h1{
+    font-size: 28px !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+}
+
+.chat-header p{
+    margin-top: 0.5px !important;
+    margin-bottom: 0 !important;
+    font-size: 12px !important;
+    opacity: 0.9;
+}
+
+/* Reduce espacio entre título y subtítulo */
+.chat-heading{
+    margin-bottom: 0.5px !important;
+}
+
+/* ==========================
+   OCULTAR "Powered by n8n"
+   ========================== */
+
+/* Oculta cualquier footer de branding */
+/*.chat-footer a,
+.chat-footer small,
+.chat-powered-by,
+.powered-by,
+[class*="powered"]{
+    display: none !important;
+}*/
+
+/* ==========================
+   AJUSTAR ALTURA GENERAL
+   ========================== */
+
+.chat-header img,
+.chat-header svg{
+    width: 22px !important;
+    height: 22px !important;
+    margin-right: 6px !important;
+}
+
+/* ==========================
+   BOTÓN ENVIAR HOVER
+   ========================== */
+
+.chat-input-send-button:hover{
+    background: #8fd3ff !important;
+}
+
+.chat-input-send-button:focus{
+    background: #8fd3ff !important;
+    outline: none !important;
+}
+
+/* Icono chatbot profesional */
+.chat-header h1::After {
+    content: "💬";
+    font-size: 40px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+	
+/* Mover el botón flotante de n8n hacia arriba */
+.chat-window-wrapper {
+    bottom: 80px !important;
+}
+
+/* Mantener también la ventana del chat más arriba */
+.chat-window {
+    bottom: 80px !important;
+}
+</style>
+
+<style>
+
+/* CHAT N8N */
+.chat-window-wrapper{
+    position: fixed !important;
+    bottom: 120px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+}
+
+/* COLOR CORPORATIVO CONFECAT */
+
+.btn-success,
+.btn-default,
+.theme-bg-default,
+.page-scroll-up a,
+.wp-block-search .wp-block-search__button,
+.widget button[type="submit"]{
+    background-color:#1E88E5 !important;
+    border-color:#1E88E5 !important;
+}
+
+.text-default,
+.navbar .nav .menu-item:hover .nav-link,
+.navbar .nav .menu-item.active .nav-link,
+.entry-content a,
+.widget a:hover,
+.footer-sidebar .widget a:hover{
+    color:#1E88E5 !important;
+}
+	
+:root{
+    --confecat-accent: #1E88E5;
+}
+
+.theme-bg-default,
+.btn-default,
+.btn-success,
+.page-scroll-up a,
+.theme-separator-line-horrizontal-full{
+    background-color: var(--confecat-accent) !important;
+    border-color: var(--confecat-accent) !important;
+}
+
+.text-default,
+.entry-content a,
+.widget a:hover,
+.navbar .nav .menu-item:hover .nav-link{
+    color: var(--confecat-accent) !important;
+}
+	
+	/* ===== PROYECTOS - COLOR CELESTE ===== */
+
+.theme-project .theme-project-content:hover{
+    background-color: #1E88E5 !important;
+}
+
+.theme-project .theme-project-content:hover .content-area:before{
+    border-color: transparent transparent #1E88E5 transparent !important;
+}
+
+.theme-project .theme-project-content .click-view a:hover{
+    background-color: #1E88E5 !important;
+}
+/* ===== PRODUCTOS / SERVICIOS ===== */
+
+/* Título del producto */
+.theme-services .service-title a:hover,
+.theme-services .service-title a:focus,
+.theme-services .service-content:hover .service-title a{
+    color: #1E88E5 !important;
+}
+
+/* Iconos y enlaces */
+.theme-services .service-content:hover .service-content-thumbnail i.fa{
+    background: #1E88E5 !important;
+    box-shadow: 0 0 0 1px #1E88E5 !important;
+}
+
+.theme-services .service-content:hover .service-links a{
+    background: #1E88E5 !important;
+    border-color: #1E88E5 !important;
+}
+
+/* Borde del bloque */
+.theme-services .service-content:hover{
+    border-color: #1E88E5 !important;
+}
+	
+	/* ===== TESTIMONIALES / INDICADORES ===== */
+
+.theme-testimonial-block,
+.theme-testimonial-block:hover{
+    border-top: 3px solid #1E88E5 !important;
+}
+
+/* Número */
+.theme-testimonial-block .name,
+.theme-testimonial-block:hover .name{
+    color: #1E88E5 !important;
+}
+
+/* Texto descriptivo */
+.theme-testimonial-block .position,
+.theme-testimonial-block:hover .position{
+    color: #ffffff !important;
+}
+
+/* Cualquier detalle decorativo */
+.theme-testimonial-block::after,
+.testimonial-content::before{
+    color: #1E88E5 !important;
+}
+
+	/* ===== ICONOS FONT AWESOME ===== */
+
+.fa,
+.fas,
+.far,
+.fab,
+.fa-map-marker,
+.fa-envelope-o,
+.fa-phone{
+    color: #1E88E5 !important;
+}
+</style>
