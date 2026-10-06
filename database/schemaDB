@@ -1,0 +1,69 @@
+create table public.compras (
+  id serial not null,
+  session_id character varying(100) not null,
+  lead_id integer null,
+  desc_producto character varying(255) not null,
+  codigo character varying(15) null,
+  cantidad integer null,
+  precio numeric null,
+  talle character varying(50) null,
+  cuit character varying(50) null,
+  razon_social character varying(255) null,
+  direccion_envio text null,
+  condicion_iva character varying(50) null,
+  f_creacion_c timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint compras_pkey primary key (id),
+  constraint fk_compras_lead foreign KEY (lead_id) references leads (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_compras_session on public.compras using btree (session_id) TABLESPACE pg_default;
+
+create index IF not exists idx_compras_lead on public.compras using btree (lead_id) TABLESPACE pg_default;
+
+
+
+
+create table public.interacciones (
+  id serial not null,
+  session_id character varying(100) not null,
+  lead_id integer null,
+  mensaje text null,
+  descripcion_producto character varying(255) null,
+  codigo_producto character varying(15) null,
+  cantidad integer null,
+  talle character varying(50) null,
+  tipo character varying(20) not null,
+  f_creacion_i timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint interacciones_pkey primary key (id),
+  constraint fk_interacciones_lead foreign KEY (lead_id) references leads (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_interacciones_producto on public.interacciones using btree (codigo_producto) TABLESPACE pg_default;
+
+create index IF not exists idx_interacciones_session on public.interacciones using btree (session_id) TABLESPACE pg_default;
+
+create index IF not exists idx_interacciones_tipo on public.interacciones using btree (tipo) TABLESPACE pg_default;
+
+
+
+create table public.leads (
+  id serial not null,
+  nombre character varying(255) null,
+  telefono character varying(50) null,
+  email character varying(255) null,
+  empresa character varying(255) null,
+  session_id character varying(100) null,
+  f_creacion_l timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint leads_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_leads_session on public.leads using btree (session_id) TABLESPACE pg_default;
+
+
+
+create table public.n8n_chat_histories (
+  id serial not null,
+  session_id character varying(255) not null,
+  message jsonb not null,
+  constraint n8n_chat_histories_pkey primary key (id)
+) TABLESPACE pg_default;
