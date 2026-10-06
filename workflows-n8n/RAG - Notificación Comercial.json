@@ -1,0 +1,721 @@
+{
+  "name": "RAG - Notificación Comercial",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tipo_evento"
+            },
+            {
+              "name": "session_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1184,
+        -32
+      ],
+      "id": "8f010825-cec1-415f-bfab-de4046f1434f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo_evento }}",
+                    "rightValue": "=CONSULTA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a5bf3712-bb68-4520-9e41-bb1bfe5d459b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "33a56241-bb96-4308-a31c-c7baf0f0d98d",
+                    "leftValue": "={{ $json.tipo_evento }}",
+                    "rightValue": "VENTA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        -32
+      ],
+      "id": "2512215e-2543-428f-a1c1-d2d96e3fc488",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH lead_actual AS (\n    SELECT\n        id,\n        session_id,\n        nombre,\n        empresa,\n        telefono,\n        email\n    FROM leads\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n)\n\nSELECT\n    l.id AS lead_id,\n    l.session_id,\n    l.nombre,\n    l.empresa,\n    l.telefono,\n    l.email,\n\n    COALESCE(\n        jsonb_agg(\n            h.message\n            ORDER BY h.id\n        ) FILTER (WHERE h.id IS NOT NULL),\n        '[]'::jsonb\n    ) AS historial\n\nFROM lead_actual l\n\nLEFT JOIN n8n_chat_histories h\n    ON h.session_id = l.session_id\n\nGROUP BY\n    l.id,\n    l.session_id,\n    l.nombre,\n    l.empresa,\n    l.telefono,\n      l.email;",
+        "options": {
+          "queryReplacement": "{{ $json.session_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -368,
+        -256
+      ],
+      "id": "0f90bd6f-97b8-41ed-9da4-2b3cc56de4e8",
+      "name": "obtener_contexto_consulta",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        48,
+        -96
+      ],
+      "id": "6aee6947-6898-4ec8-bc58-43f556d53f72",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const historial = $json.historial || [];\n\nconst mensajesLimpios = historial\n  .filter(m => {\n    // Solo conversación usuario/asistente\n    if (!['human', 'ai'].includes(m.type)) {\n      return false;\n    }\n\n    // Eliminar mensajes internos de tool calling\n    if (\n      m.type === 'ai' &&\n      typeof m.content === 'string' &&\n      m.content.startsWith('Calling ')\n    ) {\n      return false;\n    }\n\n    return true;\n  })\n  .slice(-8)\n  .map(m => ({\n    rol: m.type === 'human' ? 'CLIENTE' : 'ASISTENTE',\n    contenido: m.content\n  }));\n\nconst contextoConversacion = mensajesLimpios\n  .map(m => `${m.rol}: ${m.contenido}`)\n  .join('\\n\\n');\n\nreturn [\n  {\n    json: {\n      lead_id: $json.lead_id,\n      session_id: $json.session_id,\n      nombre: $json.nombre,\n      empresa: $json.empresa,\n      telefono: $json.telefono,\n      email: $json.email,\n      contexto_conversacion: contextoConversacion\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -256
+      ],
+      "id": "0d80782f-221f-43bc-a546-1bef8ded2c0e",
+      "name": "preparar_contexto_consulta"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos un componente interno del asistente comercial de Confecat.\n\nTu única tarea es analizar el contexto reciente de una conversación\ny generar la información necesaria para derivar una consulta a un vendedor humano.\n\nIMPORTANTE:\n- Analizá únicamente la información presente en el contexto.\n- Concentrate en la consulta MÁS RECIENTE que requiere intervención humana.\n- Ignorá compras, consultas u operaciones anteriores que ya hayan sido resueltas.\n- No inventes información.\n- No agregues datos personales al resumen salvo que sean necesarios para comprender la consulta.\n- El motivo debe ser breve y descriptivo.\n- El resumen debe explicar claramente qué necesita el cliente para que un vendedor pueda continuar la atención.\n- No menciones procesos internos, herramientas, RAG, bases de datos ni llamadas a funciones.\n\nCONTEXTO DE LA CONVERSACIÓN:\n\n{{ $json.contexto_conversacion }}\n\nGenerá exactamente estos dos valores:\n\nmotivo_derivacion:\nUna descripción breve del motivo por el cual la consulta debe ser atendida por un vendedor.\n\nresumen_consulta:\nUn resumen claro y concreto de lo solicitado por el cliente.\n\nRespondé SOLAMENTE con JSON válido, usando exactamente esta estructura:\n\n{\n  \"motivo_derivacion\": \"...\",\n  \"resumen_consulta\": \"...\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        48,
+        -256
+      ],
+      "id": "1310a2a7-97d6-44f2-8bed-ab3e9dc42aaa",
+      "name": "generar_resumen_consulta"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta generada por el Basic LLM Chain\nconst texto = $json.text;\n\n// Convertimos el JSON que viene como texto\nlet resumen;\n\ntry {\n  resumen = JSON.parse(texto);\n} catch (error) {\n  throw new Error(\n    'No se pudo interpretar la respuesta del LLM como JSON: ' + texto\n  );\n}\n\n// Recuperamos los datos estructurados que ya habíamos obtenido\n// antes de llamar al LLM.\nconst contexto = $('preparar_contexto_consulta').first().json;\n\nreturn [\n  {\n    json: {\n      lead_id: contexto.lead_id,\n      session_id: contexto.session_id,\n      nombre: contexto.nombre,\n      empresa: contexto.empresa,\n      telefono: contexto.telefono,\n      email: contexto.email,\n\n      motivo_derivacion: resumen.motivo_derivacion || null,\n      resumen_consulta: resumen.resumen_consulta || null\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -256
+      ],
+      "id": "802885a1-df11-47d1-a367-ba7b8026a616",
+      "name": "preparar_derivacion_consulta"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "03b7eaf3-f89f-4ea0-9787-130b797481e2",
+              "leftValue": "={{\n  Boolean(\n    String($json.nombre ?? '').trim() &&\n    (\n      String($json.telefono ?? '').trim() ||\n      String($json.email ?? '').trim()\n    ) &&\n    String($json.motivo_derivacion ?? '').trim() &&\n    String($json.resumen_consulta ?? '').trim() &&\n    String($json.session_id ?? '').trim() &&\n    Number($json.lead_id || 0) > 0\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        608,
+        -256
+      ],
+      "id": "0ac616c7-1fd1-432c-b86b-a5cc21b0ddbe",
+      "name": "validar_derivacion_consulta"
+    },
+    {
+      "parameters": {
+        "toRecipients": "dsalinas@confecat.com.ar",
+        "subject": "=[CONSULTA COMERCIAL] {{ $json.nombre }} - {{ $json.motivo_derivacion }}",
+        "bodyContent": "=Nueva derivación desde el asistente virtual\n\nCLIENTE\nNombre: {{ $json.nombre }}\nEmpresa: {{ $json.empresa || 'No informado' }}\nTeléfono: {{ $json.telefono || 'No informado' }}\nEmail: {{ $json.email || 'No informado' }}\n\nMOTIVO DE DERIVACIÓN\n{{ $json.motivo_derivacion }}\n\nRESUMEN DE CONSULTA\n{{ $json.resumen_consulta }}\n\nDATOS INTERNOS\nLead Cliente: {{ $json.lead_id }}\nSession ID: {{ $json.session_id }}\nFecha: {{ $now }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -384
+      ],
+      "id": "fe854c41-49a1-4ca5-97df-6aa145fc6b50",
+      "name": "enviar_consulta_ventas",
+      "webhookId": "d82a8dd9-ac11-4716-a668-cf1577021479",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "CONSULTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "Consulta derivada correctamente a ventas",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.session_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        -384
+      ],
+      "id": "4ac79d5f-a54d-4e9f-acaf-915810f3ab74",
+      "name": "respuesta_consulta_ok"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "CONSULTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "No se pudo derivar la consulta porque faltan datos obligatorios",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b6e96ece-4b79-4b08-bfb0-b25a64042b4d",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        -192
+      ],
+      "id": "8477d46d-62a4-4a9e-b484-fb7c0de34655",
+      "name": "respuesta_consulta_error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ultima_compra AS (\n    SELECT\n        id,\n        session_id,\n        lead_id,\n        desc_producto,\n        codigo,\n        cantidad,\n        precio,\n        talle,\n        cuit,\n        razon_social,\n        direccion_envio,\n        condicion_iva,\n        f_creacion_c\n    FROM compras\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n),\n\nlead_actual AS (\n    SELECT\n        id,\n        session_id,\n        nombre,\n        empresa,\n        telefono,\n        email\n    FROM leads\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n)\n\nSELECT\n    c.id AS compra_id,\n    c.session_id,\n\n    COALESCE(c.lead_id, l.id) AS lead_id,\n\n    c.desc_producto AS producto,\n    c.codigo,\n    c.cantidad,\n    c.precio,\n    c.talle,\n\n    c.cuit,\n    c.razon_social,\n    c.direccion_envio,\n    c.condicion_iva,\n\n    l.nombre,\n    l.empresa,\n    l.telefono,\n    l.email,\n\n    c.f_creacion_c AS fecha_compra\n\nFROM ultima_compra c\nLEFT JOIN lead_actual l\n    ON l.session_id = c.session_id;",
+        "options": {
+          "queryReplacement": "{{ $json.session_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -384,
+        128
+      ],
+      "id": "48eab099-395c-4993-92fc-8510947e9869",
+      "name": "obtener_datos_venta",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bab948c1-3e99-4f7d-8189-9a85a50e2c08",
+              "leftValue": "={{\n  Boolean(\n    Number($json.compra_id || 0) > 0 &&\n    String($json.session_id ?? '').trim() &&\n    Number($json.lead_id || 0) > 0 &&\n\n    String($json.producto ?? '').trim() &&\n    String($json.codigo ?? '').trim() &&\n    Number($json.cantidad || 0) > 0 &&\n    Number($json.precio || 0) > 0 &&\n    String($json.talle ?? '').trim() &&\n\n    String($json.nombre ?? '').trim() &&\n    (\n      String($json.telefono ?? '').trim() ||\n      String($json.email ?? '').trim()\n    ) &&\n\n    String($json.cuit ?? '').trim() &&\n    String($json.razon_social ?? '').trim() &&\n    String($json.direccion_envio ?? '').trim() &&\n    String($json.condicion_iva ?? '').trim()\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -176,
+        128
+      ],
+      "id": "64df9168-efb8-4702-8517-77191a31ba02",
+      "name": "validar_datos_venta"
+    },
+    {
+      "parameters": {
+        "toRecipients": "dsalinas@confecat.com.ar",
+        "subject": "=[VENTA CONFIRMADA] {{ $json.producto }} - {{ $json.nombre }}",
+        "bodyContent": "=Nueva venta registrada desde el asistente virtual\n\nPRODUCTO\nProducto: {{ $json.producto }}\nCódigo: {{ $json.codigo }}\nCantidad: {{ $json.cantidad }}\nPrecio unitario: ${{ $json.precio }}\nTalle: {{ $json.talle }}\n\nCLIENTE\nNombre: {{ $json.nombre }}\nEmpresa: {{ $json.empresa || 'No informado' }}\nTeléfono: {{ $json.telefono || 'No informado' }}\nEmail: {{ $json.email || 'No informado' }}\n\nENVÍO Y FACTURACIÓN\nRazón Social: {{ $json.razon_social }}\nCUIT: {{ $json.cuit }}\nCondición IVA: {{ $json.condicion_iva }}\nDirección de envío: {{ $json.direccion_envio }}\n\nDATOS INTERNOS\nCompra ID: {{ $json.compra_id }}\nLead ID: {{ $json.lead_id }}\nSession ID: {{ $json.session_id }}\nFecha de compra: {{ $json.fecha_compra }}\nFecha de notificación: {{ $now }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        64
+      ],
+      "id": "1b59d665-b4d9-4ea5-a555-cd24e59e05b3",
+      "name": "enviar_venta_ventas",
+      "webhookId": "d82a8dd9-ac11-4716-a668-cf1577021479",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "VENTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "Venta registrada y notificada correctamente al equipo de ventas",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('obtener_datos_venta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('obtener_datos_venta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "91934046-4fd4-4006-be9e-30e7d250b362",
+              "name": "compra_id",
+              "value": "={{ $('obtener_datos_venta').first().json.compra_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        64
+      ],
+      "id": "dca48297-e528-4c98-aa0a-c936722f6b53",
+      "name": "respuesta_venta_ok"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "VENTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "No se pudo notificar la venta porque faltan datos obligatorios",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('obtener_datos_venta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('obtener_datos_venta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "91934046-4fd4-4006-be9e-30e7d250b362",
+              "name": "compra_id",
+              "value": "={{ $('obtener_datos_venta').first().json.compra_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        288
+      ],
+      "id": "c5f5229e-ac46-4265-a071-3f6d5ac73a39",
+      "name": "respuesta_venta_ok1"
+    },
+    {
+      "parameters": {
+        "content": "## Mensaje Confirmacion de Venta\n",
+        "height": 400,
+        "width": 1328,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "0ce484f0-50b9-4394-93ee-0df5d55d4823",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Mensaje Consulta al equipo de Ventas \n",
+        "height": 432,
+        "width": 1728,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        -416
+      ],
+      "typeVersion": 1,
+      "id": "02973ed7-27a0-471e-a47f-eada5d9011de",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "obtener_contexto_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "obtener_datos_venta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener_contexto_consulta": {
+      "main": [
+        [
+          {
+            "node": "preparar_contexto_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "generar_resumen_consulta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "preparar_contexto_consulta": {
+      "main": [
+        [
+          {
+            "node": "generar_resumen_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generar_resumen_consulta": {
+      "main": [
+        [
+          {
+            "node": "preparar_derivacion_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "preparar_derivacion_consulta": {
+      "main": [
+        [
+          {
+            "node": "validar_derivacion_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_derivacion_consulta": {
+      "main": [
+        [
+          {
+            "node": "enviar_consulta_ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respuesta_consulta_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_consulta_ventas": {
+      "main": [
+        [
+          {
+            "node": "respuesta_consulta_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener_datos_venta": {
+      "main": [
+        [
+          {
+            "node": "validar_datos_venta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_datos_venta": {
+      "main": [
+        [
+          {
+            "node": "enviar_venta_ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respuesta_venta_ok1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_venta_ventas": {
+      "main": [
+        [
+          {
+            "node": "respuesta_venta_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "9c8af1e4-9f50-40c8-9d02-5f80a8a90c4d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "shg_GJCOq8vaLdA6WKL3z",
+  "tags": []
+}

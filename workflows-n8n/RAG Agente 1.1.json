@@ -1,0 +1,963 @@
+{
+  "name": "RAG Agente 1.1 copy",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('chat').item.json.chatInput }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -144,
+        -160
+      ],
+      "id": "e8766796-2ed7-4581-8048-05cc299d25bc",
+      "name": "AI AgentRAG",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -704,
+        128
+      ],
+      "id": "bbb93bab-1d41-4ab7-9939-3973d186c6f0",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "ROL\nEres el Asistente Virtual de Confecat SA, especializado en indumentaria de trabajo y calzado de seguridad.\n\nOBJETIVO\n\n* Asesorar clientes\n* Detectar intención de compra\n* Registrar interacciones comerciales\n* Completar datos del cliente (lead)\n\n---\n\nESTILO DE RESPUESTA\n\n* Responde como chat (máximo 2–3 frases)\n* No listar múltiples productos de entrada\n* No responder como catálogo\n* Prioriza preguntas para entender la necesidad\n* Da solo información clave (no técnica completa)\n\nEJEMPLO DE TONO\n\nCorrecto:\n\"Sí, tenemos botines de seguridad. ¿Para qué tipo de trabajo lo necesitás?\"\n\nIncorrecto:\n\"Contamos con varios modelos de botas de seguridad...\"\n\n---\n\nUSO DE BASE DE DATOS (MUY IMPORTANTE)\n\nDebes consultar la base \"ProductosConfe\".\n\nREGLAS DE BÚSQUEDA:\n\n1. Si no encuentras un producto exacto:\n\n   * intenta variaciones del término\n   * usa sinónimos\n   * simplifica la búsqueda\n\nEjemplos:\n\"botín francés\" → buscar:\n\n* \"botin frances\"\n* \"ombu frances\"\n* \"frances\"\n\n\"zapato seguridad\" → buscar:\n\n* \"zapato\"\n* \"calzado\"\n* \"botin\"\n\n2. Si el usuario usa términos ambiguos:\n   haz una pregunta antes de responder.\n\n3. Nunca asumas que no existe un producto sin intentar reformular.\n\n4. Cuando obtengas productos:\n\n   * incluir nombre exacto\n   * incluir código o SKU si está disponible\n\n 5. Cuando recuperes productos desde la base vectorial:\n\n- priorizar SIEMPRE metadata sobre el texto del documento\n- usar metadata.codigo o metadata.sku como identificador oficial\n- no inferir SKU desde nombres o descripciones\n\n---\n\nFLUJO DE CONVERSACIÓN\n\n1. Descubrir necesidad\n\n* uso (industria, minería, etc.)\n* tipo de producto\n\n2. Sugerir 2 o 3 opciones máximo\n\n3. Profundizar solo si el cliente lo pide\n\n---\n\nOBTIENE PRECIO Y STOCK DE PRODUCTOS\n\nUsar esta herramienta SOLO cuando tengas uno o más SKU reales obtenidos directamente desde la base \"ProductosConfe\".\n\nIMPORTANTE:\n\nEl SKU oficial del producto proviene SIEMPRE de:\n- metadata.codigo\n- metadata.sku\n\nDebes usar EXACTAMENTE ese valor.\n\nPROHIBIDO:\n- modificar códigos\n- completar códigos\n- inferir códigos\n- generar códigos similares\n- extraer códigos desde descripciones\n- usar nombres de productos como SKU\n\nSi no existe un SKU exacto en metadata:\n→ NO usar la herramienta.\n\nEntrada esperada:\n{\n  \"codigos\": [\"RPA0007\", \"BOT1234\"]\n}\n\nReglas críticas:\n- codigos debe ser SIEMPRE un array\n- usar únicamente SKU reales recuperados desde la base vectorial\n- nunca generar SKU manualmente\n\nLa herramienta devuelve:\n- codigo\n- precio\n- stock\n\n---\n\nCONSULTA DE PRECIO Y STOCK\n\nSi el usuario solicita precio, stock o disponibilidad:\n\n1. Debes usar la herramienta precio y stock de productos\n2. Pasar el codigo_producto obtenido de la base\n3. No responder sin consultar la herramienta\n\n---\n\nDETECCIÓN DE PRODUCTOS (CLAVE)\n\nDiferenciar SIEMPRE entre:\n\n1. INTENCIÓN DEL USUARIO\n   → lo que el usuario pide (ej: \"botín francés\")\n\n2. PRODUCTO REAL\n   → lo que devuelve la base (ej: \"Botín Francés Negro Ombú\")\n\nReglas:\n\n* descripcion_producto → usar SIEMPRE el término del usuario\n* codigo_producto → debe provenir exclusivamente de metadata.codigo o metadata.sku recuperados desde la base vectorial.\n* NO reemplazar lo que dice el usuario por variantes\n\n---\n\nREGISTRO DE INTERACCIONES\n\nUsar la herramienta captura_interacciones para registrar interacciones relevantes.\n\nDebes enviar un JSON con EXACTAMENTE estas propiedades:\n\n{\n\"mensaje\": string,\n\"descripcion_producto\": string,\n\"codigo_producto\": string,\n\"cantidad\": number,\n\"talle\": string,\n\"tipo\": string\n}\n\nDefiniciones:\n\n* mensaje: texto original del usuario\n* descripcion_producto: producto mencionado por el usuario\n* cantidad: si no se menciona usar 1\n* talle: si aplica\n* tipo:\n\n  * \"consulta\"\n  * \"intencion\"\n  * \"compra\"\n* codigo_producto: \n\n  * SOLO completar si proviene directamente de la base de datos (SKU real)\n  * Debe ser un código corto (ej: \"RPA0007\" o \"ZAP1025-000-036\")\n  * Máximo 15 caracteres\n\n\n   PROHIBIDO:\n   * usar descripciones como código\n   * usar nombres de productos como código\n   * inventar códigos\n\n  VALIDACIÓN CRÍTICA:\n   Si el valor de codigo_producto contiene espacios o parece una descripción:\n   → NO es un código válido\n   → dejar vacío \"\"\n \n\nReglas:\n\n* No inventar productos\n* No inventar códigos\n* Si no hay producto claro → dejar vacío\n* No registrar múltiples interacciones iguales\n\n---\n\nACTUALIZACIÓN DE LEADS (MUY IMPORTANTE)\n\nEl lead del cliente ya existe en la base de datos.\n\nTu tarea es COMPLETARLO progresivamente.\n\nSi el usuario menciona cualquiera de estos datos:\n\n* nombre\n* teléfono\n* email\n* empresa\n\nDebes usar la herramienta update_leads_clientes inmediatamente.\n\nNo esperes a tener todos los datos.\nPuedes enviar valores parciales.\n\nFormato:\n\n{\n\"nombre\": string,\n\"telefono\": string,\n\"email\": string,\n\"empresa\": string\n}\n\nReglas:\n\n* Solo enviar campos que el usuario haya proporcionado\n* No inventar datos\n* No repetir actualizaciones innecesarias\n* Si el dato ya fue proporcionado antes, no volver a enviarlo\n\n---\n\nDETECCIÓN DE DATOS DEL CLIENTE\n\nDebes detectar incluso cuando los datos aparecen de forma natural:\n\nEjemplos:\n\n\"Soy Juan\" → nombre\n\"Mi nombre es Pedro Gómez\" → nombre\n\"Podés escribirme al 383...\" → teléfono\n\"Mi mail es...\" → email\n\"Trabajo en Minera X\" → empresa\n\nDebes capturar estos datos automáticamente.\n\n---\n\nPRIORIDAD DE CAPTURA DE DATOS\n\nSiempre que detectes datos del cliente:\n\n1. Primero actualizar el lead\n2. Luego continuar la conversación\n\nNunca ignores datos del usuario.\n\n---\n\nINTENCIÓN DE COMPRA\n\nSi el usuario muestra intención clara:\n\nEjemplos:\n\n* \"quiero comprar\"\n* \"necesito 2 pares\"\n* \"pasame precio para comprar\"\n\n→ Registrar interacción con:\ntipo = \"intencion\"\n\n---\n\nVALIDACIÓN DE COMPRA\n\nAntes de registrar una compra, verificar que existan al menos:\n\n* producto\n* cantidad\n\nSi faltan datos:\n→ hacer preguntas antes de continuar\n\n---\n\nREGISTRO DE COMPRA\n\nCuando el cliente confirma compra:\n\n1. Registrar interacción con tipo \"compra\"\n\n2. Usar registrar_compra con:\n\n{\n\"producto\": string,\n\"codigo\": string,\n\"cantidad\": number,\n\"precio\": number,\n\"talle\": string,\n\"cuit\": string,\n\"razon_social\": string,\n\"direccion_envio\": string,\n\"condicion_iva\": string\n}\n\nReglas:\n\n* producto → término general del cliente\n* codigo → SKU del producto real\n* no inventar datos\n* no completar campos faltantes\n*IMPORTENTE: si el cliente no te menciona la cantidad de productos que necesita llena el campo cantidad = 1 \n\n---\n\nENVÍO DE MAIL: VENTAS CONFIRMADAS\n\nDespués de registrar la compra:\n\nUsar herramienta de mail mensaje_ventas con:\n\n* nombre\n* empresa\n* teléfono\n* producto\n* cantidad\n* talle\n* dirección de envío\n* cuit\n* session_id\n\nObjetivo:\nNotificar al equipo de ventas.\n\n---\nENVÍO DE MAIL:  DERIVACION COMERCIAL/CONSULTAS\n\nSi el cliente:\n\n* solicita hablar con un asesor\n* pide atención humana\n* realiza una consulta que no puedes resolver\n* solicita cotización especial\n* requiere seguimiento comercial\n* existe incertidumbre sobre la respuesta\n\nDebes usar la herramienta mensaje_consultas.\n\nDebes enviar:\n\n{\n\"motivo_derivacion\": string,\n\"resumen_consulta\": string,\n\"mensaje_original\": string\n}\n\nDefiniciones:\n\n* motivo_derivacion:\n  Explicación breve y concreta del motivo de escalamiento.\n\n* mensaje_original:\n  Último mensaje textual del cliente.\n\nVALIDACIÓN OBLIGATORIA ANTES DE DERIVAR\n\nANTES de usar mensaje_ventas debes verificar que existan al menos:\n\n* nombre\n* teléfono o email\n* motivo de consulta\n\nSi falta alguno:\n- debes preguntarlo antes de derivar.\n-NO enviar mails incompletos.\n-Debes recopilar la información faltante de manera natural y conversacional.\n\nEjemplos:\n\n\"Perfecto, ¿podrías indicarme tu nombre y teléfono para que un asesor se contacte?\"\n\n\"¿Qué tipo de consulta o necesidad querés que revise el vendedor?\"\n\nREGLA CRÍTICA:\n\nNO ejecutar mensaje_ventas hasta tener:\n\n* datos mínimos de contacto\n* motivo de consulta\n* No inventar información\n* Resumir de forma clara y profesional\n* Máximo 3 frases\n* Priorizar intención comercial y necesidad del cliente\n\n\n---\n\nFLUJO DE COMPRA (ORDEN OBLIGATORIO)\n\n1. captura_interacciones (tipo = compra)\n2. registrar_compra\n3. enviar_mail\n\n---\n\nPROTOCOLO DE INCERTIDUMBRE\n\nANTES de decir que no existe un producto:\n\n* reintentar búsqueda con variaciones\n\nSi no hay resultados:\n\n\"No encuentro ese modelo exacto, pero puedo ofrecerte alternativas similares o derivarte a ventas al 3834902220.\"\n\nNunca inventar productos.\n\n---\n\nCIERRE DE VENTA\n\n\"Perfecto, ya registré tu pedido. Un asesor se contactará a la brevedad para finalizar la compra.\"\n\n---\n\nREGLA FINAL\n\nCuando sea natural, puedes hacer preguntas para obtener datos del cliente (nombre, teléfono o email), especialmente si hay intención de compra.\n\n",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "ProductosConfe",
+          "mode": "list",
+          "cachedResultName": "ProductosConfe"
+        },
+        "topK": 8,
+        "useReranker": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        512,
+        -32
+      ],
+      "id": "0d5b4e6c-e4c3-4a5e-9cba-26df333e7741",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "5bygw3mHuRd0Apfc",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "rerank-multilingual-v3.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.rerankerCohere",
+      "typeVersion": 1,
+      "position": [
+        688,
+        112
+      ],
+      "id": "81f8a0bd-ec08-4832-822d-19df96e0bd44",
+      "name": "Reranker Cohere",
+      "credentials": {
+        "cohereApi": {
+          "id": "1I2ji2nSSL6VvM32",
+          "name": "CohereApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        112
+      ],
+      "id": "b44a6c45-d1bc-46f8-ac3d-17a394dd4b9a",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -576,
+        128
+      ],
+      "id": "925ca3c7-5f2c-41ae-87be-367052c076e9",
+      "name": "chat_memory",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "interacciones",
+          "mode": "list",
+          "cachedResultName": "interacciones"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $json.lead_id }}",
+            "cantidad": "={{$json.cantidad}}",
+            "session_id": "={{ $json.session_id }}",
+            "mensaje": "={{$json.mensaje}}",
+            "descripcion_producto": "={{$json.descripcion_producto}}",
+            "talle": "={{$json.talle}}",
+            "tipo": "={{$json.tipo}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "descripcion_producto",
+              "displayName": "descripcion_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo_producto",
+              "displayName": "codigo_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "talle",
+              "displayName": "talle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "f_creacion_i",
+              "displayName": "f_creacion_i",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "skipOnConflict": true,
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -256,
+        128
+      ],
+      "id": "30fbdd96-53c4-4e26-a924-d63cc50b31c8",
+      "name": "captura_interacciones",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "compras",
+          "mode": "list",
+          "cachedResultName": "compras"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ Number($json.lead_id) }}",
+            "cantidad": "={{ Number($json.cantidad) }}",
+            "precio": "={{$json.precio}}",
+            "session_id": "={{ $json.session_id }}",
+            "desc_producto": "={{$json.producto}}",
+            "codigo": "={{$json.codigo}}",
+            "talle": "={{$json.talle}}",
+            "cuit": "={{$json.cuit}}",
+            "razon_social": "={{$json.razon_social}}",
+            "direccion_envio": "={{$json.direccion_envio}}",
+            "condicion_iva": "={{$json.condicion_iva}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "desc_producto",
+              "displayName": "desc_producto",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "precio",
+              "displayName": "precio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "talle",
+              "displayName": "talle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cuit",
+              "displayName": "cuit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "razon_social",
+              "displayName": "razon_social",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direccion_envio",
+              "displayName": "direccion_envio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "condicion_iva",
+              "displayName": "condicion_iva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "f_creacion_c",
+              "displayName": "f_creacion_c",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -96,
+        128
+      ],
+      "id": "e14401b8-cad5-41cf-9fe1-27f073759e2b",
+      "name": "registrar_compra",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, nombre, telefono, email, empresa\nFROM leads\nWHERE session_id = '{{$json.sessionId}}'\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1184,
+        -144
+      ],
+      "id": "9cd5f813-a0f3-421c-9d65-316fa8365752",
+      "name": "consulta_lead_id",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d78eb5f-d48e-4abe-a2b0-a2a4f0a03749",
+              "name": "lead_id",
+              "value": "={{ $json.id }}",
+              "type": "number"
+            },
+            {
+              "id": "d72b9bd2-cd0d-4a4a-8c3f-4165cb7b3590",
+              "name": "session_id",
+              "value": "={{ $('chat').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1024,
+        -144
+      ],
+      "id": "e4b09d23-f9ce-4f24-9d24-d39f8293d0cc",
+      "name": "Edit Fields",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "10920b82-f815-4f62-b282-8aca1f93d091",
+              "leftValue": "={{ Number($json.lead_id || 0) > 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -848,
+        -144
+      ],
+      "id": "c2355892-a1d4-4993-9a21-b1ddc0e2051f",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1344,
+        -144
+      ],
+      "id": "608428f8-9e0d-4956-a9b6-5579b16bd118",
+      "name": "chat",
+      "webhookId": "9c0450cc-e56c-45fc-b9de-6a2c84120b83"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads\nSET\n  nombre = COALESCE(NULLIF('{{$json.nombre || \"\"}}', ''), nombre),\n  telefono = COALESCE(NULLIF('{{$json.telefono || \"\"}}', ''), telefono),\n  email = COALESCE(NULLIF('{{$json.email || \"\"}}', ''), email),\n  empresa = COALESCE(NULLIF('{{$json.empresa || \"\"}}', ''), empresa)\nWHERE session_id = '{{$json.sessionId || $('chat').item.json.sessionId}}';\n",
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -432,
+        128
+      ],
+      "id": "9021a131-b115-47a5-8224-072a8dcc6afd",
+      "name": "update_leads_clientes",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "leads",
+          "mode": "list",
+          "cachedResultName": "leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('chat').item.json.sessionId }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "f_creacion_l",
+              "displayName": "f_creacion_l",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "outputColumns": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -672,
+        -80
+      ],
+      "id": "f0d9ead5-d12d-4104-953c-988a5dca2cfd",
+      "name": "crear_lead",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/productos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "codigos",
+              "value": "=={{ JSON.stringify($json.codigos) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"codigos\": [\"200-01F1-ZAM\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        112
+      ],
+      "id": "78064ee2-b181-4738-952c-ac05f6f0cf90",
+      "name": "Precio y stock de productos"
+    },
+    {
+      "parameters": {
+        "toRecipients": "dsalinas@confecat.com.ar",
+        "subject": "=[VENTA CONFIRMADA] {{$json.producto}}",
+        "bodyContent": "=Nueva venta registrada desde el asistente virtual\n\nPRODUCTO\nProducto: {{$json.producto || 'No informado'}}\nCódigo: {{$json.codigo || 'No informado'}}\nCantidad: {{$json.cantidad || 1}}\nTalle: {{$json.talle || 'No informado'}}\n\nCLIENTE\nNombre: {{ $('consulta_lead_id').item.json.nombre || 'No informado' }}\nEmpresa: {{$json.empresa || 'No informado'}}\nTeléfono: {{$json.telefono || 'No informado'}}\nEmail: {{$json.email || 'No informado'}}\n\nENVÍO Y FACTURACIÓN\nDirección: {{$json.direccion_envio || 'No informado'}}\nCUIT: {{$json.cuit || 'No informado'}}\nCondición IVA: {{$json.condicion_iva || 'No informado'}}\n\nDATOS INTERNOS\nSession ID: {{$json.sessionId || 'No informado'}}\nFecha: {{$now}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        48,
+        128
+      ],
+      "id": "4c2e7b63-97b3-4e15-bc65-1651d6ff5b63",
+      "name": "mensaje_ventas",
+      "webhookId": "9f9b9910-d3da-4279-af39-3738a47cfddb",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toRecipients": "dsalinas@confecat.com.ar",
+        "subject": "=DERIVACIÓN COMERCIAL {{$json.nombre || 'Cliente'}} ",
+        "bodyContent": "=Nueva derivación desde el asistente virtual\n\nCLIENTE\nNombre: {{$json.nombre || 'No informado'}}\nEmpresa: {{$json.empresa || 'No informado'}}\nTeléfono: {{$json.telefono || 'No informado'}}\nEmail: {{$json.email || 'No informado'}}\n\nMOTIVO DE DERIVACIÓN\n{{$json.motivo_derivacion || 'No informado'}}\n\nRESUMEN DE CONSULTA\n{{$json.resumen_consulta || 'No informado'}}\n\nDATOS INTERNOS\nLead Cliente: {{$json.lead_id || 'No informado'}}\nSession ID: {{$json.session_id || 'No informado'}}\nFecha: {{$now}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        192,
+        128
+      ],
+      "id": "a643e8b0-ca5b-429b-890c-13807eaffa0d",
+      "name": "mensaje_consultas",
+      "webhookId": "2989868b-be38-4d53-a3d2-800f12e707c3",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reranker Cohere": {
+      "ai_reranker": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_reranker",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chat_memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "captura_interacciones": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "registrar_compra": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consulta_lead_id": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "crear_lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chat": {
+      "main": [
+        [
+          {
+            "node": "consulta_lead_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_leads_clientes": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crear_lead": {
+      "main": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Precio y stock de productos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mensaje_ventas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mensaje_consultas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI AgentRAG",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "5cc65e71-5171-4f90-a3ea-671950b9fae3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "umBfGqoaG7Aiw663",
+  "tags": []
+}
