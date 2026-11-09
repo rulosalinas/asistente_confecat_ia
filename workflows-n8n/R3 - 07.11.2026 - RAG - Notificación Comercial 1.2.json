@@ -1,0 +1,799 @@
+{
+  "name": "RAG - Notificación Comercial 1.2",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tipo_evento"
+            },
+            {
+              "name": "session_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        672
+      ],
+      "id": "ecd9feb5-d338-42a7-8bd3-1b88d95520a6",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo_evento }}",
+                    "rightValue": "=CONSULTA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a5bf3712-bb68-4520-9e41-bb1bfe5d459b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "33a56241-bb96-4308-a31c-c7baf0f0d98d",
+                    "leftValue": "={{ $json.tipo_evento }}",
+                    "rightValue": "VENTA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        672
+      ],
+      "id": "492cdac5-5853-419b-824c-07cafd909121",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH lead_actual AS (\n    SELECT\n        id,\n        session_id,\n        nombre,\n        empresa,\n        telefono,\n        email\n    FROM leads\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n)\n\nSELECT\n    l.id AS lead_id,\n    l.session_id,\n    l.nombre,\n    l.empresa,\n    l.telefono,\n    l.email,\n\n    COALESCE(\n        jsonb_agg(\n            h.message\n            ORDER BY h.id\n        ) FILTER (WHERE h.id IS NOT NULL),\n        '[]'::jsonb\n    ) AS historial\n\nFROM lead_actual l\n\nLEFT JOIN n8n_chat_histories h\n    ON h.session_id = l.session_id\n\nGROUP BY\n    l.id,\n    l.session_id,\n    l.nombre,\n    l.empresa,\n    l.telefono,\n      l.email;",
+        "options": {
+          "queryReplacement": "{{ $json.session_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1152,
+        448
+      ],
+      "id": "678b88ab-c05f-4648-9c11-bf203ba8d42c",
+      "name": "obtener_contexto_consulta",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        608
+      ],
+      "id": "adb59029-915e-4e08-80a8-e683f90aac44",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const historial = $json.historial || [];\n\nconst mensajesLimpios = historial\n  .filter(m => {\n    // Solo conversación usuario/asistente\n    if (!['human', 'ai'].includes(m.type)) {\n      return false;\n    }\n\n    // Eliminar mensajes internos de tool calling\n    if (\n      m.type === 'ai' &&\n      typeof m.content === 'string' &&\n      m.content.startsWith('Calling ')\n    ) {\n      return false;\n    }\n\n    return true;\n  })\n  .slice(-8)\n  .map(m => ({\n    rol: m.type === 'human' ? 'CLIENTE' : 'ASISTENTE',\n    contenido: m.content\n  }));\n\nconst contextoConversacion = mensajesLimpios\n  .map(m => `${m.rol}: ${m.contenido}`)\n  .join('\\n\\n');\n\nreturn [\n  {\n    json: {\n      lead_id: $json.lead_id,\n      session_id: $json.session_id,\n      nombre: $json.nombre,\n      empresa: $json.empresa,\n      telefono: $json.telefono,\n      email: $json.email,\n      contexto_conversacion: contextoConversacion\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        448
+      ],
+      "id": "f624e44c-4df4-44e5-b4e6-5379ba4017dd",
+      "name": "preparar_contexto_consulta"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos un componente interno del asistente comercial de Confecat.\n\nTu única tarea es analizar el contexto reciente de una conversación\ny generar la información necesaria para derivar una consulta a un vendedor humano.\n\nIMPORTANTE:\n- Analizá únicamente la información presente en el contexto.\n- Concentrate en la consulta MÁS RECIENTE que requiere intervención humana.\n- Ignorá compras, consultas u operaciones anteriores que ya hayan sido resueltas.\n- No inventes información.\n- No agregues datos personales al resumen salvo que sean necesarios para comprender la consulta.\n- El motivo debe ser breve y descriptivo.\n- El resumen debe explicar claramente qué necesita el cliente para que un vendedor pueda continuar la atención.\n- No menciones procesos internos, herramientas, RAG, bases de datos ni llamadas a funciones.\n\nCONTEXTO DE LA CONVERSACIÓN:\n\n{{ $json.contexto_conversacion }}\n\nGenerá exactamente estos dos valores:\n\nmotivo_derivacion:\nUna descripción breve del motivo por el cual la consulta debe ser atendida por un vendedor.\n\nresumen_consulta:\nUn resumen claro y concreto de lo solicitado por el cliente.\n\nRespondé SOLAMENTE con JSON válido, usando exactamente esta estructura:\n\n{\n  \"motivo_derivacion\": \"...\",\n  \"resumen_consulta\": \"...\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1568,
+        448
+      ],
+      "id": "0e69f620-0b57-4f3d-b9f7-26fd50c34618",
+      "name": "generar_resumen_consulta"
+    },
+    {
+      "parameters": {
+        "jsCode": "const textoOriginal = String($json.text ?? '').trim();\n\n// Tomar únicamente el objeto JSON que esté entre la primera { y la última }\nconst inicio = textoOriginal.indexOf('{');\nconst fin = textoOriginal.lastIndexOf('}');\n\nif (inicio === -1 || fin === -1 || fin < inicio) {\n  throw new Error(\n    'No se encontró un objeto JSON válido en la respuesta del LLM: ' + textoOriginal\n  );\n}\n\nconst textoJson = textoOriginal.slice(inicio, fin + 1);\n\nlet resumen;\n\ntry {\n  resumen = JSON.parse(textoJson);\n} catch (error) {\n  throw new Error(\n    'No se pudo interpretar la respuesta del LLM como JSON: ' + textoOriginal\n  );\n}\n\nconst contexto = $('preparar_contexto_consulta').first().json;\n\nreturn [\n  {\n    json: {\n      lead_id: contexto.lead_id,\n      session_id: contexto.session_id,\n      nombre: contexto.nombre,\n      empresa: contexto.empresa,\n      telefono: contexto.telefono,\n      email: contexto.email,\n\n      motivo_derivacion: resumen.motivo_derivacion || null,\n      resumen_consulta: resumen.resumen_consulta || null\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        448
+      ],
+      "id": "9f656b3b-8e39-45c0-a2bf-a110a4c0b15d",
+      "name": "preparar_derivacion_consulta"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "03b7eaf3-f89f-4ea0-9787-130b797481e2",
+              "leftValue": "={{\n  Boolean(\n    String($json.nombre ?? '').trim() &&\n    (\n      String($json.telefono ?? '').trim() ||\n      String($json.email ?? '').trim()\n    ) &&\n    String($json.motivo_derivacion ?? '').trim() &&\n    String($json.resumen_consulta ?? '').trim() &&\n    String($json.session_id ?? '').trim() &&\n    Number($json.lead_id || 0) > 0\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2128,
+        448
+      ],
+      "id": "eb6ea1f2-091d-44a2-86a5-8b5dc34d61ca",
+      "name": "validar_derivacion_consulta"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('configuracion_notificaciones').first().json.destinatario_ventas }}",
+        "subject": "=[CONSULTA COMERCIAL] {{ $json.nombre }} - {{ $json.motivo_derivacion }}",
+        "bodyContent": "=Nueva derivación desde el asistente virtual\n\nCLIENTE\nNombre: {{ $json.nombre }}\nEmpresa: {{ $json.empresa || 'No informado' }}\nTeléfono: {{ $json.telefono || 'No informado' }}\nEmail: {{ $json.email || 'No informado' }}\n\nMOTIVO DE DERIVACIÓN\n{{ $json.motivo_derivacion }}\n\nRESUMEN DE CONSULTA\n{{ $json.resumen_consulta }}\n\nDATOS INTERNOS\nLead Cliente: {{ $json.lead_id }}\nSession ID: {{ $json.session_id }}\nFecha de notificación: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy HH:mm:ss') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        320
+      ],
+      "id": "0936b3e6-0832-4194-b3f3-5362ed491b20",
+      "name": "enviar_consulta_ventas",
+      "webhookId": "d74092b6-4d5f-411f-8997-92432be81ad6",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "CONSULTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "Consulta derivada correctamente a ventas",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.session_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        320
+      ],
+      "id": "cc5aa587-aa51-4f09-aac2-513361e63d22",
+      "name": "respuesta_consulta_ok"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "CONSULTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "No se pudo derivar la consulta porque faltan datos obligatorios",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('preparar_derivacion_consulta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b6e96ece-4b79-4b08-bfb0-b25a64042b4d",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        512
+      ],
+      "id": "9d91c497-2a13-46d2-ac0b-2d703c4abc3b",
+      "name": "respuesta_consulta_error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ultima_compra AS (\n    SELECT\n        id,\n        session_id,\n        lead_id,\n        desc_producto,\n        codigo,\n        cantidad,\n        precio,\n        talle,\n        cuit,\n        razon_social,\n        direccion_envio,\n        condicion_iva,\n        f_creacion_c\n    FROM compras\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n),\n\nlead_actual AS (\n    SELECT\n        id,\n        session_id,\n        nombre,\n        empresa,\n        telefono,\n        email\n    FROM leads\n    WHERE session_id = $1\n    ORDER BY id DESC\n    LIMIT 1\n)\n\nSELECT\n    c.id AS compra_id,\n    c.session_id,\n\n    COALESCE(c.lead_id, l.id) AS lead_id,\n\n    c.desc_producto AS producto,\n    c.codigo,\n    c.cantidad,\n    c.precio,\n    c.talle,\n\n    c.cuit,\n    c.razon_social,\n    c.direccion_envio,\n    c.condicion_iva,\n\n    l.nombre,\n    l.empresa,\n    l.telefono,\n    l.email,\n\n    TO_CHAR(\n    c.f_creacion_c AT TIME ZONE 'America/Argentina/Buenos_Aires',\n    'DD/MM/YYYY HH24:MI:SS'\n) AS fecha_compra\n\nFROM ultima_compra c\nLEFT JOIN lead_actual l\n    ON l.session_id = c.session_id;",
+        "options": {
+          "queryReplacement": "{{ $json.session_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1136,
+        832
+      ],
+      "id": "6fa775fb-d563-40e9-92f4-9553c4773e45",
+      "name": "obtener_datos_venta",
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bab948c1-3e99-4f7d-8189-9a85a50e2c08",
+              "leftValue": "={{\n  Boolean(\n    Number($json.compra_id || 0) > 0 &&\n    String($json.session_id ?? '').trim() &&\n    Number($json.lead_id || 0) > 0 &&\n\n    String($json.producto ?? '').trim() &&\n    String($json.codigo ?? '').trim() &&\n    Number($json.cantidad || 0) > 0 &&\n    Number($json.precio || 0) > 0 &&\n    String($json.talle ?? '').trim() &&\n\n    String($json.nombre ?? '').trim() &&\n    /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(\n      String($json.email ?? '').trim()\n    ) &&\n\n    String($json.cuit ?? '').trim() &&\n    String($json.razon_social ?? '').trim() &&\n    String($json.direccion_envio ?? '').trim() &&\n    String($json.condicion_iva ?? '').trim()\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        832
+      ],
+      "id": "35daae19-d16f-4b6f-9a8c-e11266d8c63e",
+      "name": "validar_datos_venta"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('configuracion_notificaciones').first().json.destinatario_ventas }}",
+        "subject": "=[VENTA CONFIRMADA] {{ $json.producto }} - {{ $json.nombre }}",
+        "bodyContent": "=Nueva venta registrada desde el asistente virtual\n\nPRODUCTO\nProducto: {{ $json.producto }}\nCódigo: {{ $json.codigo }}\nCantidad: {{ $json.cantidad }}\nPrecio unitario: ${{ $json.precio }}\nTalle: {{ $json.talle }}\n\nCLIENTE\nNombre: {{ $json.nombre }}\nEmpresa: {{ $json.empresa || 'No informado' }}\nTeléfono: {{ $json.telefono || 'No informado' }}\nEmail: {{ $json.email || 'No informado' }}\n\nENVÍO Y FACTURACIÓN\nRazón Social: {{ $json.razon_social }}\nCUIT: {{ $json.cuit }}\nCondición IVA: {{ $json.condicion_iva }}\nDirección de envío: {{ $json.direccion_envio }}\n\nDATOS INTERNOS\nCompra ID: {{ $json.compra_id }}\nLead ID: {{ $json.lead_id }}\nSession ID: {{ $json.session_id }}\nFecha de compra: {{ $json.fecha_compra }}\nFecha de notificación: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy HH:mm:ss') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        768
+      ],
+      "id": "dc867c8a-a82b-4a96-9d73-86e1f16360a5",
+      "name": "enviar_venta_ventas",
+      "webhookId": "1ad602aa-c385-4e9d-a59c-e0afb26d11ea",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "VENTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "Venta registrada y notificada correctamente al equipo de ventas",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('obtener_datos_venta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('obtener_datos_venta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "91934046-4fd4-4006-be9e-30e7d250b362",
+              "name": "compra_id",
+              "value": "={{ $('obtener_datos_venta').first().json.compra_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2032,
+        768
+      ],
+      "id": "08e58ca5-6dea-4a56-b8bd-fdd576449dbf",
+      "name": "respuesta_venta_ok"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6dcebbf0-77d3-4345-aa18-40822c2d874f",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "17e2babb-c2f3-4c00-8b22-966d992e0e27",
+              "name": "tipo_evento",
+              "value": "VENTA",
+              "type": "string"
+            },
+            {
+              "id": "97cb6a29-2fca-4429-a0ec-c7378b0168af",
+              "name": "mensaje",
+              "value": "No se pudo notificar la venta porque faltan datos obligatorios",
+              "type": "string"
+            },
+            {
+              "id": "818e3a27-9bb8-4b73-9bf2-016baf2aed8c",
+              "name": "lead_id",
+              "value": "={{ $('obtener_datos_venta').first().json.lead_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74af2c18-d2fa-4b05-bac3-8daa2c50054b",
+              "name": "session_id",
+              "value": "={{ $('obtener_datos_venta').first().json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "91934046-4fd4-4006-be9e-30e7d250b362",
+              "name": "compra_id",
+              "value": "={{ $('obtener_datos_venta').first().json.compra_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        992
+      ],
+      "id": "da54436a-753c-4c03-a731-b3e4e98f8ccb",
+      "name": "respuesta_venta_ok1"
+    },
+    {
+      "parameters": {
+        "content": "## Mensaje Confirmacion de Venta\n",
+        "height": 400,
+        "width": 1328,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1024,
+        736
+      ],
+      "typeVersion": 1,
+      "id": "218b1dcc-e859-460b-a26a-47a47ec340c8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Mensaje Consulta al equipo de Ventas \n",
+        "height": 432,
+        "width": 1728,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1024,
+        288
+      ],
+      "typeVersion": 1,
+      "id": "e0f8ddc2-a745-4284-9f9e-0b26492ee1f1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fd6ee2e-a180-4153-bf5a-8ca3437481cc",
+              "name": "destinatario_ventas",
+              "value": "dsalinas@confecat.com.ar",
+              "type": "string"
+            },
+            {
+              "id": "b820856b-43bf-4268-85be-19c14e16e8d1",
+              "name": "destinatario_confirmacion_staging",
+              "value": "tesis.agente.ia@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        672
+      ],
+      "id": "d1cb7a9d-7ef4-4005-85bf-3949f5b5fffa",
+      "name": "configuracion_notificaciones"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('configuracion_notificaciones').first().json.destinatario_confirmacion_staging }}",
+        "subject": "=={{ '[STAGING - PRUEBA] [CONFIRMACIÓN DE PEDIDO] ' + $('obtener_datos_venta').first().json.producto + ' - Confecat SA' }}",
+        "bodyContent": "=Este correo fue generado durante una prueba controlada del asistente virtual.\nEl destinatario real de la confirmación está restringido a una casilla de prueba.\nHola {{ $('obtener_datos_venta').first().json.nombre }},\n\nTu pedido fue registrado correctamente y fue enviado al equipo comercial de Confecat SA para continuar con la gestión.\n\nDETALLE DEL PEDIDO\n\nProducto: {{ $('obtener_datos_venta').first().json.producto }}\nCódigo: {{ $('obtener_datos_venta').first().json.codigo }}\nCantidad: {{ $('obtener_datos_venta').first().json.cantidad }}\nTalle: {{ $('obtener_datos_venta').first().json.talle }}\nPrecio unitario: ${{ $('obtener_datos_venta').first().json.precio }}\n\nDATOS DE FACTURACIÓN Y ENVÍO\n\nRazón Social: {{ $('obtener_datos_venta').first().json.razon_social }}\nCUIT: {{ $('obtener_datos_venta').first().json.cuit }}\nCondición IVA: {{ $('obtener_datos_venta').first().json.condicion_iva }}\nDirección de envío: {{ $('obtener_datos_venta').first().json.direccion_envio }}\n\nFecha del pedido: {{ $('obtener_datos_venta').first().json.fecha_compra }}\n\nEste correo confirma el registro de tu pedido. El equipo comercial se contactara contigo y continuará con la gestión correspondiente.\n\nConfecat SA",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        768
+      ],
+      "id": "952a81eb-b115-4515-8336-416de00816f9",
+      "name": "enviar_confirmacion_cliente",
+      "webhookId": "1ad602aa-c385-4e9d-a59c-e0afb26d11ea",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "tmICW2F9RzPwqtZk",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "configuracion_notificaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "obtener_contexto_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "obtener_datos_venta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener_contexto_consulta": {
+      "main": [
+        [
+          {
+            "node": "preparar_contexto_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "generar_resumen_consulta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "preparar_contexto_consulta": {
+      "main": [
+        [
+          {
+            "node": "generar_resumen_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generar_resumen_consulta": {
+      "main": [
+        [
+          {
+            "node": "preparar_derivacion_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "preparar_derivacion_consulta": {
+      "main": [
+        [
+          {
+            "node": "validar_derivacion_consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_derivacion_consulta": {
+      "main": [
+        [
+          {
+            "node": "enviar_consulta_ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respuesta_consulta_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_consulta_ventas": {
+      "main": [
+        [
+          {
+            "node": "respuesta_consulta_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener_datos_venta": {
+      "main": [
+        [
+          {
+            "node": "validar_datos_venta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_datos_venta": {
+      "main": [
+        [
+          {
+            "node": "enviar_venta_ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respuesta_venta_ok1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_venta_ventas": {
+      "main": [
+        [
+          {
+            "node": "enviar_confirmacion_cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "configuracion_notificaciones": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_confirmacion_cliente": {
+      "main": [
+        [
+          {
+            "node": "respuesta_venta_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "bcdec741-d7fa-47b1-a9a4-1ca757ce6625",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "shg_GJCOq8vaLdA6WKL3z",
+  "tags": []
+}

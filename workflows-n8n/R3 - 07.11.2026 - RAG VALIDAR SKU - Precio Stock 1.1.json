@@ -1,0 +1,771 @@
+{
+  "name": "RAG VALIDAR SKU - Precio Stock 1.1",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "codigo"
+            },
+            {
+              "name": "operacion"
+            },
+            {
+              "name": "producto"
+            },
+            {
+              "name": "cantidad",
+              "type": "number"
+            },
+            {
+              "name": "precio",
+              "type": "number"
+            },
+            {
+              "name": "talle"
+            },
+            {
+              "name": "cuit"
+            },
+            {
+              "name": "razon_social"
+            },
+            {
+              "name": "direccion_envio"
+            },
+            {
+              "name": "condicion_iva"
+            },
+            {
+              "name": "lead_id",
+              "type": "number"
+            },
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "ficha_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1344,
+        -32
+      ],
+      "id": "e6b9c50f-ef5a-486b-a6f8-696d09b7d64d",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c2a92de3-21f1-45f9-8c70-9667c8d9f84c",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.ficha_id }}",
+              "rightValue": "={{ $json.result?.points?.[0]?.payload?.metadata?.ficha_id ?? '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -944,
+        -32
+      ],
+      "id": "8996ec89-3fc2-41a4-a46d-6eb3c7ddbf25",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/productos",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "codigos",
+              "value": "={{ [ $('When Executed by Another Workflow').item.json.codigo ] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -672,
+        -176
+      ],
+      "id": "2d4d6689-999d-4290-8792-a1edaa659ad9",
+      "name": "consultar_precio_y_stock"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8062b7b-f597-4e34-a6f8-a5902da24f87",
+              "name": "validacion_sku",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "6dc353ea-6086-4512-adc3-d078dc71d4e8",
+              "name": "mensaje",
+              "value": "SKU no encontrado exactamente en el catálogo. No se consulta precio ni stock.",
+              "type": "string"
+            },
+            {
+              "id": "437f0213-2a64-40c4-9854-3e4c87bab5d0",
+              "name": "codigo",
+              "value": "={{ $('When Executed by Another Workflow').item.json.codigo }}",
+              "type": "string"
+            },
+            {
+              "id": "c5a7c859-cc46-4d67-8a3e-15a49cc4d247",
+              "name": "operacion",
+              "value": "={{ $('When Executed by Another Workflow').item.json.operacion }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -672,
+        112
+      ],
+      "id": "d080e14d-0edc-424b-8d01-4bc07caa9fc5",
+      "name": "sku_rechazado"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8062b7b-f597-4e34-a6f8-a5902da24f87",
+              "name": "validacion_sku",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "9c2c481d-76d9-4b99-8db9-df866db27341",
+              "name": "codigo",
+              "value": "={{ $json.codigo }}",
+              "type": "string"
+            },
+            {
+              "id": "120bf076-87f6-42f2-ba4c-8f1b32c65b57",
+              "name": "precio",
+              "value": "={{ $json.precio }}",
+              "type": "number"
+            },
+            {
+              "id": "118fe9bf-095c-46b4-a0f2-ffa8b5f779c7",
+              "name": "stock",
+              "value": "={{ $json.stock }}",
+              "type": "number"
+            },
+            {
+              "id": "bd0a29c8-57a2-4585-a094-179fc6139ba3",
+              "name": "validacion_identidad",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "bb8fd6bf-c6d9-4fa4-bef6-3f48a11e8de2",
+              "name": "ficha_id",
+              "value": "={{ $json.ficha_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        -368
+      ],
+      "id": "5b277658-348f-4ad0-97aa-d3604d2589f2",
+      "name": "sku_valido"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.operacion }}",
+                    "rightValue": "precio_stock",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ab53269e-f257-42b2-baa6-8b3dc06a2133"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ad5a564b-93b0-4c70-8273-1452a9c8d390",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.operacion }}",
+                    "rightValue": "registrar_compra",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        -272
+      ],
+      "id": "2edcb5a1-b4ea-4a77-b6f9-e3776d173a90",
+      "name": "operacion"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "compras",
+          "mode": "list",
+          "cachedResultName": "compras"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cantidad": "={{ Number($('When Executed by Another Workflow').item.json.cantidad || 1) }}",
+            "precio": "={{ Number($('consultar_precio_y_stock').item.json.precio) }}",
+            "lead_id": "={{ $('When Executed by Another Workflow').item.json.lead_id }}\n",
+            "session_id": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+            "desc_producto": "={{ $('validar_ficha_qdrant').item.json.result?.points?.[0]?.payload?.metadata?.variante_comercial ?? $('validar_ficha_qdrant').item.json.result?.points?.[0]?.payload?.metadata?.producto ?? '' }}",
+            "codigo": "={{ $('consultar_precio_y_stock').item.json.codigo }}",
+            "talle": "={{ $('When Executed by Another Workflow').item.json.talle }}",
+            "cuit": "={{ $('When Executed by Another Workflow').item.json.cuit }}",
+            "razon_social": "={{ $('When Executed by Another Workflow').item.json.razon_social }}",
+            "direccion_envio": "={{ $('When Executed by Another Workflow').item.json.direccion_envio }}",
+            "condicion_iva": "={{ $('When Executed by Another Workflow').item.json.condicion_iva }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "desc_producto",
+              "displayName": "desc_producto",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "precio",
+              "displayName": "precio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "talle",
+              "displayName": "talle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cuit",
+              "displayName": "cuit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "razon_social",
+              "displayName": "razon_social",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direccion_envio",
+              "displayName": "direccion_envio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "condicion_iva",
+              "displayName": "condicion_iva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "f_creacion_c",
+              "displayName": "f_creacion_c",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        -192
+      ],
+      "id": "a9e34539-5575-4ef2-936b-b859346020da",
+      "name": "registrar_compra",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "6sOB9cNOVP5TW6ks",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c126c76-ab6c-4a44-a535-29743f966723",
+              "name": "validacion_sku",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "51566461-7101-4ba0-b50b-7f69756f60de",
+              "name": "compra_registrada",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "e0778dd4-5dfa-494f-b5d0-a5b1b9b9d834",
+              "name": "codigo",
+              "value": "={{ $('consultar_precio_y_stock').item.json.codigo }}",
+              "type": "string"
+            },
+            {
+              "id": "5027b4f0-0968-49f4-b297-5a9693f7f16d",
+              "name": "mensaje",
+              "value": "Compra registrada con identidad ficha-SKU y precio operacional validados.",
+              "type": "string"
+            },
+            {
+              "id": "db5ad755-b6c2-4664-b4ad-e3ca2463d84a",
+              "name": "validacion_identidad",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "4a356823-0025-4cfd-8701-d3f837e361ee",
+              "name": "ficha_id",
+              "value": "={{ $('consultar_precio_y_stock').item.json.ficha_id }}",
+              "type": "string"
+            },
+            {
+              "id": "52cc6803-ea96-4958-b4f2-44cb66fb70eb",
+              "name": "precio",
+              "value": "={{ Number($('consultar_precio_y_stock').item.json.precio) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -192
+      ],
+      "id": "fa743947-6e13-4af8-8a0f-e8f1448bf36f",
+      "name": "compra_registrada"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://f7b00862-6024-4f54-a409-266b02c29f56.europe-west6-0.gcp.cloud.qdrant.io/collections/ProductosConfe/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.ficha_id\",\n        \"match\": {\n          \"value\": \"{{ $json.ficha_id }}\"\n        }\n      }\n    ]\n  },\n  \"limit\": 1,\n  \"with_payload\": true,\n  \"with_vector\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1152,
+        -32
+      ],
+      "id": "17a671a0-a57b-4e76-935d-f33b90764847",
+      "name": "validar_ficha_qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "5bygw3mHuRd0Apfc",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ad9d55bb-add1-4e21-86e2-ad72f55c5a68",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.ficha_id }}",
+              "rightValue": "={{ $json.ficha_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "87e20eab-22c7-4b3d-8043-7cfa03eebb22",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.codigo }}",
+              "rightValue": "={{ $json.codigo }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -464,
+        -176
+      ],
+      "id": "23ce65bb-a71b-4cef-b2b7-a69c9e901bf1",
+      "name": "validar_identidad_sku"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "471bdc9e-b008-4e31-b7d3-151472c24147",
+              "name": "validacion_sku",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "9dd16345-c3b5-4ae5-8f6b-0530ca6bf92a",
+              "name": "validacion_identidad",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "40fb56f3-240e-42bd-aa8d-66520f0db8d7",
+              "name": "ficha_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.ficha_id }}",
+              "type": "string"
+            },
+            {
+              "id": "af3dca04-13b9-4ef6-99ff-8bb69ed9e260",
+              "name": "codigo",
+              "value": "={{ $('When Executed by Another Workflow').item.json.codigo }}",
+              "type": "string"
+            },
+            {
+              "id": "5f6d8f8d-a757-4efe-8ede-7f3f14e8daa8",
+              "name": "ficha_id_operacional",
+              "value": "={{ $json.ficha_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b3ec7f01-18f7-4cd2-8f26-fda8bdcd8d29",
+              "name": "codigo_operacional",
+              "value": "={{ $json.codigo ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4f990a7b-deb1-410e-9599-75430e45968b",
+              "name": "precio",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "aeb4c52d-5c9c-4cdd-ad8d-f115bf74cd39",
+              "name": "stock",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "2ac90815-d55d-4c04-8543-3f877b808cab",
+              "name": "mensaje",
+              "value": "El código solicitado existe, pero no pertenece a la ficha comercial seleccionada. La operación fue rechazada.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        -112
+      ],
+      "id": "a683fa18-6a28-46bd-bf62-305e5b3af476",
+      "name": "identidad_rechazada"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "validar_ficha_qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "consultar_precio_y_stock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "sku_rechazado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_precio_y_stock": {
+      "main": [
+        [
+          {
+            "node": "validar_identidad_sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sku_valido": {
+      "main": [
+        []
+      ]
+    },
+    "operacion": {
+      "main": [
+        [
+          {
+            "node": "sku_valido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "registrar_compra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "registrar_compra": {
+      "main": [
+        [
+          {
+            "node": "compra_registrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_ficha_qdrant": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar_identidad_sku": {
+      "main": [
+        [
+          {
+            "node": "operacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "identidad_rechazada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "82beae4e-970b-498f-b789-30bd82648d81",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "TSv_apcVpFyf3iRbPyicD",
+  "tags": []
+}

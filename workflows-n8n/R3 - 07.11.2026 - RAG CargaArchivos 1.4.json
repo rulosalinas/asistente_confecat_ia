@@ -1,0 +1,479 @@
+{
+  "name": "RAG CargaArchivos 1.4",
+  "nodes": [
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $('set_campos').item.json.pageContent }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "categoria",
+                "value": "={{ $('set_campos').item.json.metadata.categoria }}"
+              },
+              {
+                "name": "subcategoria",
+                "value": "={{ $('set_campos').item.json.metadata.subcategoria }}"
+              },
+              {
+                "name": "marca",
+                "value": "={{ $('set_campos').item.json.metadata.marca }}"
+              },
+              {
+                "name": "modelo",
+                "value": "={{ $('set_campos').item.json.metadata.modelo }}"
+              },
+              {
+                "name": "=ficha_id",
+                "value": "={{ $('set_campos').item.json.metadata.ficha_id }}"
+              },
+              {
+                "name": "uso_especifico",
+                "value": "={{ $('set_campos').item.json.metadata.uso_especifico }}"
+              },
+              {
+                "name": "=uso_general",
+                "value": "={{ $('set_campos').item.json.metadata.uso_general }}"
+              },
+              {
+                "name": "sinonimos_uso",
+                "value": "={{ $('set_campos').item.json.metadata.sinonimos_uso }}"
+              },
+              {
+                "name": "material_principal",
+                "value": "={{ $('set_campos').item.json.metadata.material_principal }}"
+              },
+              {
+                "name": "talles",
+                "value": "={{ $('set_campos').item.json.metadata.talles }}"
+              },
+              {
+                "name": "normas",
+                "value": "={{ $('set_campos').item.json.metadata.normas }}"
+              },
+              {
+                "name": "puntera",
+                "value": "={{ $('set_campos').item.json.metadata.puntera }}"
+              },
+              {
+                "name": "archivo",
+                "value": "={{ $('set_campos').item.json.metadata.archivo }}"
+              },
+              {
+                "name": "producto",
+                "value": "={{ $('set_campos').item.json.metadata.producto }}"
+              },
+              {
+                "name": "variante_comercial",
+                "value": "={{ $('set_campos').item.json.metadata.variante_comercial }}"
+              },
+              {
+                "name": "articulo_base",
+                "value": "={{ $('set_campos').item.json.metadata.articulo_base }}"
+              },
+              {
+                "name": "codigo_referencia_actual",
+                "value": "={{ $('set_campos').item.json.metadata.codigo_referencia_actual }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        288
+      ],
+      "id": "bdcbaeaa-7372-4647-85db-1722fb38ddbf",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyWeek",
+              "hour": 20
+            }
+          ]
+        },
+        "watchFolder": true,
+        "folderId": {
+          "__rl": true,
+          "value": "01WOLYMV2N5DGF4ZMI45E2WK3KJYOOFB44",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOneDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        160
+      ],
+      "id": "1d50d5a9-c190-4551-8118-795370779aa5",
+      "name": "nueva_ficha",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyWeek",
+              "hour": 20
+            }
+          ]
+        },
+        "event": "fileUpdated"
+      },
+      "type": "n8n-nodes-base.microsoftOneDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -32
+      ],
+      "id": "b29550c6-3b3f-4ef0-9279-1bce60438902",
+      "name": "actualizar_ficha",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        112,
+        80
+      ],
+      "id": "1c6bdf55-ca0d-47d6-8b35-a2fdfe2ed799",
+      "name": "descarga_fichas",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "3BI2cWbV4REMPr6R",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        80
+      ],
+      "id": "00a24235-b7f3-4f1d-a9b4-4d6b2a3dbe60",
+      "name": "extraccion_info"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Sos un asistente especializado en estructurar fichas técnicas y comerciales de productos de Indumentaria de trabajo y calzados de seguridad.\n\nNo inventes información. Usá solo los datos provistos.\n\nDebes respetar estrictamente la estructura JSON solicitada por el usuario.\n\nLa salida debe contener únicamente \"documento_embedding\" y \"metadata\" como propiedades del objeto raíz.\n\n\"documento_embedding\" debe ser siempre un string de texto plano y nunca un objeto JSON."
+            },
+            {
+              "content": "=Texto de la ficha comercial:\n\n{{ $json.text }}\n\nProcesá EXCLUSIVAMENTE la información contenida en el texto anterior.\n\nNO utilices información externa.\nNO inventes datos.\nNO reemplaces los valores de la ficha por ejemplos.\nNO completes información por conocimiento general.\n\nLa respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido con estas dos propiedades raíz:\n\n{\n  \"documento_embedding\": \"...\",\n  \"metadata\": {\n    \"ficha_id\": \"...\",\n    \"producto\": \"...\",\n    \"variante_comercial\": \"...\",\n    \"articulo_base\": \"...\",\n    \"codigo_referencia_actual\": \"...\",\n    \"categoria\": \"...\",\n    \"subcategoria\": \"...\",\n    \"marca\": \"...\",\n    \"modelo\": \"...\",\n    \"uso_especifico\": \"...\",\n    \"uso_general\": \"...\",\n    \"sinonimos_uso\": [\"...\", \"...\"],\n    \"material_principal\": \"...\",\n    \"talles\": \"...\",\n    \"normas\": \"...\",\n    \"puntera\": \"...\",\n    \"archivo\": \"...\"\n  }\n}\n\nREGLAS DE IDENTIDAD OBLIGATORIAS\n\nEn el texto existe una sección denominada:\n\n0. CONTROL DE IDENTIDAD DE FICHA\n\nLos siguientes cinco campos deben copiarse LITERALMENTE desde esa sección:\n\n- FICHA_ID → metadata.ficha_id\n- PRODUCTO → metadata.producto\n- VARIANTE_COMERCIAL → metadata.variante_comercial\n- ARTICULO_BASE → metadata.articulo_base\n- CODIGO_REFERENCIA_ACTUAL → metadata.codigo_referencia_actual\n\nNo modificar, resumir, traducir, corregir ni inferir estos cinco valores.\n\nSi uno de esos cinco campos no existe literalmente en el texto, escribir:\n\n\"ERROR_CAMPO_IDENTIDAD_NO_ENCONTRADO\"\n\nPara el resto de la metadata:\n\n- \"categoria\": obtener de Categoría.\n- \"subcategoria\": obtener de Categoría o Línea cuando corresponda.\n- \"marca\": obtener de Marca.\n- \"modelo\": obtener de Nombre comercial del modelo.\n- \"uso_especifico\": obtener de Uso específico (prioridad alta).\n- \"uso_general\": obtener de Uso general (secundario).\n- \"sinonimos_uso\": generar únicamente a partir de PALABRAS CLAVE PARA BÚSQUEDA y términos presentes en la propia ficha.\n- \"material_principal\": obtener de la sección MATERIALES Y CONSTRUCCIÓN.\n- \"talles\": obtener de Talles disponibles.\n- \"normas\": obtener de Norma y Código de certificación.\n- \"puntera\": obtener de Tipo de puntera.\n\nSi cualquiera de estos campos no está informado en la ficha, utilizar:\n\n\"No aplica\"\n\nEl campo \"archivo\" debe contener exactamente:\n\n{{ $('descarga_fichas').item.json.name }}\n\nDOCUMENTO_EMBEDDING\n\n\"documento_embedding\" debe ser un único string de texto plano.\n\nDebe estructurarse así:\n\n[USO_ESPECIFICO]\n...\n\n[RESUMEN_USO]\n...\n\n[SINONIMOS_USO]\n...\n\n[IDENTIFICACION]\nFICHA_ID: ...\nPRODUCTO: ...\nVARIANTE_COMERCIAL: ...\nARTICULO_BASE: ...\nCODIGO_REFERENCIA_ACTUAL: ...\nMARCA: ...\nMODELO: ...\nCATEGORIA: ...\nSUBCATEGORIA: ...\n\n[DESCRIPCION]\n...\n\n[PROPIEDADES_CLAVE]\n...\n\n[MATERIALES]\n...\n\n[NORMATIVAS]\n...\n\n[DETALLES_ADICIONALES]\n...\n\nEn [SINONIMOS_USO] utilizar texto plano separado por comas.\n\nNo utilizar objetos JSON dentro de \"documento_embedding\".\n\nREGLA FINAL DE VERIFICACIÓN\n\nAntes de responder, compará estos cinco valores de metadata contra el bloque \"0. CONTROL DE IDENTIDAD DE FICHA\":\n\n- ficha_id\n- producto\n- variante_comercial\n- articulo_base\n- codigo_referencia_actual\n\nDeben coincidir exactamente carácter por carácter con la ficha recibida.\n\nSi no coinciden, corregirlos utilizando los valores literales de la ficha antes de generar la respuesta.\n\n\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 2000,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          },
+          "temperature": 0,
+          "topP": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        80
+      ],
+      "id": "5abb6613-1255-4a63-a89a-53c13c421b2b",
+      "name": "estandarizacion_fichas",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bdff7d21-0db3-4717-8b38-f7615beb3c5e",
+              "name": "archivo",
+              "value": "={{ $json.output[0].content[0].text.metadata.archivo }}",
+              "type": "string"
+            },
+            {
+              "id": "a89f0286-78d0-4943-87d9-651d38c61b36",
+              "name": "metadata",
+              "value": "={{ $json.output[0].content[0].text.metadata }}",
+              "type": "object"
+            },
+            {
+              "id": "87fa4625-9c55-42ce-b5af-5487d25d3cb7",
+              "name": "pageContent",
+              "value": "={{ $json.output[0].content[0].text.documento_embedding }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        80
+      ],
+      "id": "a71494cf-3eca-4fb2-81e5-92dfce4d6bcd",
+      "name": "set_campos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://f7b00862-6024-4f54-a409-266b02c29f56.europe-west6-0.gcp.cloud.qdrant.io/collections/ProductosConfe/points/delete?wait=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.ficha_id\",\n        \"match\": {\n          \"value\": \"{{ $json.metadata.ficha_id }}\"\n        }\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1088,
+        80
+      ],
+      "id": "2319af10-d7a8-42c7-af85-13e7e3551ecd",
+      "name": "evitar_duplicados",
+      "credentials": {
+        "qdrantApi": {
+          "id": "5bygw3mHuRd0Apfc",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkSize": 2500,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        464
+      ],
+      "id": "5637f4a5-1024-46bf-90ae-9abbc19ff745",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "ProductosConfe",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1280,
+        80
+      ],
+      "id": "d00606a5-b603-478c-a534-6c660861e25d",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "5bygw3mHuRd0Apfc",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        336
+      ],
+      "id": "b9ebdefc-22ba-4a44-bb0b-71eb79bdfeeb",
+      "name": "embeddings_openAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "LRo3mVvYHbOm1Sjh",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "nueva_ficha": {
+      "main": [
+        [
+          {
+            "node": "descarga_fichas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descarga_fichas": {
+      "main": [
+        [
+          {
+            "node": "extraccion_info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extraccion_info": {
+      "main": [
+        [
+          {
+            "node": "estandarizacion_fichas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "estandarizacion_fichas": {
+      "main": [
+        [
+          {
+            "node": "set_campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_campos": {
+      "main": [
+        [
+          {
+            "node": "evitar_duplicados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "evitar_duplicados": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "embeddings_openAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "actualizar_ficha": {
+      "main": [
+        [
+          {
+            "node": "descarga_fichas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "c9c1f7d7-eaea-419f-8a2b-66dce089f177",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffa451551f63fa387561a6513733f8361823efb2b3b9a84f3b76e12f7abc0bc5"
+  },
+  "id": "eNif5gaRKo8Ginzy",
+  "tags": []
+}
